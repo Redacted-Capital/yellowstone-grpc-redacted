@@ -3,6 +3,7 @@ use {
         config::Config,
         grpc::GrpcService,
         metrics::{self, PrometheusService},
+        redacted_tcp_server::RedactedGeyserServer,
     },
     agave_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, ReplicaBlockInfoVersions,
@@ -34,6 +35,8 @@ pub struct PluginInner {
     grpc_channel: mpsc::UnboundedSender<Message>,
     grpc_shutdown: Arc<Notify>,
     prometheus: PrometheusService,
+
+    tcp_server: Option<Arc<RedactedGeyserServer>>,
 }
 
 impl PluginInner {
@@ -111,6 +114,15 @@ impl GeyserPlugin for Plugin {
                 ))
             })?;
 
+        let tcp_server = if let Some(tcp) = config.tcp {
+            let tcp_server = RedactedGeyserServer::new(&tcp.address);
+            let _ = tcp_server.start_server();
+
+            Some(tcp_server)
+        } else {
+            None
+        };
+
         self.inner = Some(PluginInner {
             runtime,
             snapshot_channel: Mutex::new(snapshot_channel),
@@ -118,6 +130,8 @@ impl GeyserPlugin for Plugin {
             grpc_channel,
             grpc_shutdown,
             prometheus,
+
+            tcp_server,
         });
 
         Ok(())

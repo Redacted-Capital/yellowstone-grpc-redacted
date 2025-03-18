@@ -26,6 +26,8 @@ pub struct Config {
     /// Collect client filters, processed slot and make it available on prometheus port `/debug_clients`
     #[serde(default)]
     pub debug_clients_http: bool,
+    #[serde(default)]
+    pub tcp: Option<ConfigTcp>,
 }
 
 impl Config {
@@ -347,4 +349,11 @@ where
             .map_err(de::Error::custom),
         None => Ok(None),
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConfigTcp {
+    /// Address of tcp service.
+    pub address: String,
 }
