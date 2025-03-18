@@ -26,6 +26,8 @@ pub struct Config {
     pub debug_clients_http: bool,
     #[serde(default)]
     pub tcp: Option<ConfigTcp>,
+    #[serde(default)]
+    pub udp: Option<ConfigUdp>,
 }
 
 impl Config {
@@ -443,5 +445,12 @@ where
 #[serde(deny_unknown_fields)]
 pub struct ConfigTcp {
     /// Address of tcp service.
+    pub address: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConfigUdp {
+    /// Address of udp service.
     pub address: String,
 }
