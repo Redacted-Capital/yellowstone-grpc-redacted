@@ -44,6 +44,7 @@ tokio-stream = { workspace = true }
 tonic = { workspace = true, features = ["gzip", "zstd", "tls", "tls-roots"] }
 tonic-health = { workspace = true }
 yellowstone-grpc-proto = { workspace = true, features = ["convert"] }
+libc = "*"
 
 [build-dependencies]
 anyhow = { workspace = true }

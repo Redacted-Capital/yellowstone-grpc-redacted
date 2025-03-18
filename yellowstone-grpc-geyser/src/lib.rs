@@ -1,3 +1,4 @@
+#![allow(invalid_reference_casting)]
 pub mod config;
 pub mod filters;
 pub mod grpc;
@@ -12,3 +13,7 @@ pub fn get_thread_name() -> String {
     let id = ATOMIC_ID.fetch_add(1, Ordering::Relaxed);
     format!("solGeyserGrpc{id:02}")
 }
+
+pub mod redacted_tcp_memory_pool;
+pub mod redacted_tcp_server;
+pub mod redacted_tcp_types;

@@ -3,6 +3,7 @@ use {
         config::Config,
         grpc::{GrpcService, Message},
         metrics::{self, PrometheusService, MESSAGE_QUEUE_SIZE},
+        redacted_tcp_server::RedactedGeyserServer,
     },
     agave_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, ReplicaBlockInfoVersions,
@@ -31,6 +32,8 @@ pub struct PluginInner {
     grpc_channel: mpsc::UnboundedSender<Arc<Message>>,
     grpc_shutdown: Arc<Notify>,
     prometheus: PrometheusService,
+
+    tcp_server: Option<Arc<RedactedGeyserServer>>,
 }
 
 impl PluginInner {
@@ -99,6 +102,15 @@ impl GeyserPlugin for Plugin {
                 ))
             })?;
 
+        let tcp_server = if let Some(tcp) = config.tcp {
+            let tcp_server = RedactedGeyserServer::new(&tcp.address);
+            let _ = tcp_server.start_server();
+
+            Some(tcp_server)
+        } else {
+            None
+        };
+
         self.inner = Some(PluginInner {
             runtime,
             snapshot_channel: Mutex::new(snapshot_channel),
@@ -106,6 +118,8 @@ impl GeyserPlugin for Plugin {
             grpc_channel,
             grpc_shutdown,
             prometheus,
+
+            tcp_server,
         });
 
         Ok(())
@@ -127,33 +141,58 @@ impl GeyserPlugin for Plugin {
         is_startup: bool,
     ) -> PluginResult<()> {
         self.with_inner(|inner| {
-            let account = match account {
-                ReplicaAccountInfoVersions::V0_0_1(_info) => {
-                    unreachable!("ReplicaAccountInfoVersions::V0_0_1 is not supported")
-                }
-                ReplicaAccountInfoVersions::V0_0_2(_info) => {
-                    unreachable!("ReplicaAccountInfoVersions::V0_0_2 is not supported")
-                }
-                ReplicaAccountInfoVersions::V0_0_3(info) => info,
-            };
+            if let Some(tcp) = &inner.tcp_server {
+                let account = match account {
+                    ReplicaAccountInfoVersions::V0_0_1(_info) => {
+                        unreachable!("ReplicaAccountInfoVersions::V0_0_1 is not supported")
+                    }
+                    ReplicaAccountInfoVersions::V0_0_2(_info) => {
+                        unreachable!("ReplicaAccountInfoVersions::V0_0_2 is not supported")
+                    }
+                    ReplicaAccountInfoVersions::V0_0_3(info) => info,
+                };
 
-            if is_startup {
-                if let Some(channel) = inner.snapshot_channel.lock().unwrap().as_ref() {
-                    let message = Message::Account((account, slot, is_startup).into());
-                    match channel.send(Box::new(message)) {
-                        Ok(()) => MESSAGE_QUEUE_SIZE.inc(),
-                        Err(_) => {
-                            if !inner.snapshot_channel_closed.swap(true, Ordering::Relaxed) {
-                                log::error!(
-                                    "failed to send message to startup queue: channel closed"
-                                )
+                let _ = tcp.send_account_update(
+                    account.pubkey,
+                    account.txn.map(|txn| txn.signature()),
+                    slot,
+                    false,
+                    account.lamports,
+                    &account.data,
+                    account.owner,
+                    account.executable,
+                    account.rent_epoch,
+                    account.write_version,
+                );
+            } else {
+                let account = match account {
+                    ReplicaAccountInfoVersions::V0_0_1(_info) => {
+                        unreachable!("ReplicaAccountInfoVersions::V0_0_1 is not supported")
+                    }
+                    ReplicaAccountInfoVersions::V0_0_2(_info) => {
+                        unreachable!("ReplicaAccountInfoVersions::V0_0_2 is not supported")
+                    }
+                    ReplicaAccountInfoVersions::V0_0_3(info) => info,
+                };
+
+                if is_startup {
+                    if let Some(channel) = inner.snapshot_channel.lock().unwrap().as_ref() {
+                        let message = Message::Account((account, slot, is_startup).into());
+                        match channel.send(Box::new(message)) {
+                            Ok(()) => MESSAGE_QUEUE_SIZE.inc(),
+                            Err(_) => {
+                                if !inner.snapshot_channel_closed.swap(true, Ordering::Relaxed) {
+                                    log::error!(
+                                        "failed to send message to startup queue: channel closed"
+                                    )
+                                }
                             }
                         }
                     }
+                } else {
+                    let message = Message::Account((account, slot, is_startup).into());
+                    inner.send_message(message);
                 }
-            } else {
-                let message = Message::Account((account, slot, is_startup).into());
-                inner.send_message(message);
             }
 
             Ok(())
