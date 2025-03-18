@@ -13,6 +13,9 @@ pub fn get_thread_name() -> String {
     format!("solGeyserGrpc{id:02}")
 }
 
-pub mod redacted_tcp_memory_pool;
+pub mod redacted_memory_pool;
 pub mod redacted_tcp_server;
 pub mod redacted_tcp_types;
+
+pub mod redacted_udp_server;
+pub mod redacted_udp_types;

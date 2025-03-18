@@ -1,8 +1,8 @@
 use {
     crate::{
         config::Config,
-        grpc::GrpcService,
-        metrics::{self, PrometheusService},
+        grpc::{GrpcService, Message},
+        metrics::{self, PrometheusService, MESSAGE_QUEUE_SIZE},
         redacted_tcp_server::RedactedGeyserServer,
     },
     agave_geyser_plugin_interface::geyser_plugin_interface::{
@@ -10,6 +10,7 @@ use {
         ReplicaEntryInfoVersions, ReplicaTransactionInfoVersions, Result as PluginResult,
         SlotStatus,
     },
+    solana_sdk::pubkey::Pubkey,
     std::{
         concat, env,
         sync::{
@@ -36,7 +37,8 @@ pub struct PluginInner {
     grpc_shutdown: Arc<Notify>,
     prometheus: PrometheusService,
 
-    tcp_server: Option<Arc<RedactedGeyserServer>>,
+    tcp_server: Option<Arc<crate::redacted_tcp_server::RedactedGeyserServer>>,
+    udp_server: Option<Arc<crate::redacted_udp_server::RedactedGeyserServer>>,
 }
 
 impl PluginInner {
@@ -115,10 +117,24 @@ impl GeyserPlugin for Plugin {
             })?;
 
         let tcp_server = if let Some(tcp) = config.tcp {
-            let tcp_server = RedactedGeyserServer::new(&tcp.address);
+            let tcp_server = crate::redacted_tcp_server::RedactedGeyserServer::new(&tcp.address);
             let _ = tcp_server.start_server();
 
             Some(tcp_server)
+        } else {
+            None
+        };
+
+        let udp_server = if let Some(udp) = config.udp {
+            if let Some(_) = &tcp_server {
+                panic!("UDP server is enabled, but TCP server is already enabled. Disabling UDP server.");
+            } else {
+                let udp_server =
+                    crate::redacted_udp_server::RedactedGeyserServer::new(&udp.address);
+                let _ = udp_server.start_server();
+
+                Some(udp_server)
+            }
         } else {
             None
         };
@@ -132,6 +148,7 @@ impl GeyserPlugin for Plugin {
             prometheus,
 
             tcp_server,
+            udp_server,
         });
 
         Ok(())
@@ -176,6 +193,9 @@ impl GeyserPlugin for Plugin {
                                 )
                             }
                         }
+                    } else {
+                        let message = Message::Account((account, slot, is_startup).into());
+                        inner.send_message(message);
                     }
                 }
             } else {

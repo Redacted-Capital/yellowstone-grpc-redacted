@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::Builder;
 
-use crate::redacted_tcp_memory_pool::RedactedMemoryPool;
+use crate::redacted_memory_pool::RedactedMemoryPool;
 use crate::redacted_tcp_types::{
     RedactedGeyserError, REDACTED_GEYSER_MAGIC_GUARD_END, REDACTED_GEYSER_MAGIC_GUARD_START, REDACTED_GEYSER_MAX_CLIENTS, REDACTED_GEYSER_MEMORY_POOL_SIZE, REDACTED_GEYSER_NOTIFY_ACCOUNT_UPDATE, REDACTED_GEYSER_PACKET_HEADER_SIZE, REDACTED_GEYSER_PACKET_MAX_SIZE, REDACTED_GEYSER_SERVER_BACKPRESSURE, REDACTED_GEYSER_SERVER_WORK_ORDERS, REDACTED_GEYSER_SET_PROGRAM_CONFIG
 };
@@ -213,13 +213,20 @@ impl RedactedGeyserServer {
         is_sandwich: bool,
         lamports: u64,
         data: &[u8],
-        owner: &[u8],
+        owner: &Pubkey,
         executable: bool,
         rent_epoch: u64,
         write_version: u64,
     ) -> Result<(), Error> {
         if self.listener_client_count.load(Ordering::SeqCst) == 0 {
             return Ok(());
+        }
+
+        {
+            let geyser_program_list = self.geyser_program_list.read().unwrap();
+            if !geyser_program_list.is_empty() && !geyser_program_list.contains(owner) {
+                return Ok(());
+            }
         }
         // Calculate total size needed:
         // - 1 byte for the magic header start
