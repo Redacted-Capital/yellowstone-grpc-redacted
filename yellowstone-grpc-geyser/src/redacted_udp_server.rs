@@ -415,35 +415,6 @@ impl RedactedGeyserServer {
                             };
 
                             if let Some(addr) = sockaddr_from_std(&addr) {
-                                #[cfg(target_os = "linux")]
-                                unsafe {
-                                    let sock_addr_ptr = &addr as *const libc::sockaddr_in;
-                                    if !mut_self.listener_clients.iter().any(|c| {
-                                        c.sin_addr == (*sock_addr_ptr).sin_addr
-                                            && c.sin_family == (*sock_addr_ptr).sin_family
-                                            && c.sin_port == (*sock_addr_ptr).sin_port
-                                    }) {
-                                        for i in 0..REDACTED_GEYSER_MAX_CLIENTS {
-                                            if mut_self.listener_clients[i].sin_family == 0 {
-                                                mut_self.listener_clients[i] = *sock_addr_ptr;
-                                                mut_self.listener_clients_heartbeats[i] =
-                                                    Instant::now();
-
-                                                let self_cloned = server.clone();
-                                                Builder::new()
-                                                    .name(format!("redacted_udp_geyser_send_{}", i))
-                                                    .spawn(move || {
-                                                        self_cloned.thread_send(i);
-                                                    })
-                                                    .unwrap();
-
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                #[cfg(not(target_os = "linux"))]
                                 unsafe {
                                     let sock_addr_ptr = &addr as *const libc::sockaddr_in;
                                     if !mut_self.listener_clients.iter().any(|c| {
