@@ -144,8 +144,6 @@ impl RedactedGeyserServer {
                     let mut_self = &mut *((&**self) as *const RedactedGeyserServer
                         as *mut RedactedGeyserServer);
                     mut_self.listener_clients[i] = std::mem::zeroed();
-
-                    self.listener_client_count.fetch_sub(1, Ordering::SeqCst);
                 }
             }
         }
@@ -404,6 +402,7 @@ impl RedactedGeyserServer {
                                     break;
                                 }
                             }
+
                             continue;
                         }
 
