@@ -54,14 +54,8 @@ unsafe impl Sync for RedactedMemoryPool {}
 #[cfg(target_os = "linux")]
 pub fn set_thread_exclusivity() {
     unsafe {
-        let thread_id = libc::pthread_self();
-        let max_prio = libc::sched_get_priority_max(libc::SCHED_FIFO);
-
-        let param = libc::sched_param {
-            sched_priority: max_prio,
-        };
-
-        if libc::pthread_setschedparam(thread_id, libc::SCHED_FIFO, &param) != 0 {
+        let param = libc::sched_param { sched_priority: 99 };
+        if libc::pthread_setschedparam(libc::pthread_self(), libc::SCHED_FIFO, &param) != 0 {
             panic!("Failed to set thread exclusivity");
         }
     }
