@@ -13,7 +13,7 @@ use std::sync::{Arc, RwLock};
 use std::thread::{self, Builder};
 use std::time::{Duration, Instant};
 
-use crate::redacted_memory_pool::RedactedMemoryPool;
+use crate::redacted_memory_pool::{set_thread_exclusivity, RedactedMemoryPool};
 use crate::redacted_udp_types::{
     RedactedGeyserError, REDACTED_GEYSER_HEARTBEAT, REDACTED_GEYSER_HEARTBEAT_TIMEOUT,
     REDACTED_GEYSER_MAGIC_GUARD_END, REDACTED_GEYSER_MAGIC_GUARD_START,
@@ -178,6 +178,9 @@ impl RedactedGeyserServer {
     }
 
     fn thread_send(self: &Arc<Self>, client_index: usize) {
+        #[cfg(target_os = "linux")]
+        set_thread_exclusivity();
+
         let socket_fd = self.listener_socket.as_raw_fd();
         self.listener_client_count.fetch_add(1, Ordering::SeqCst);
 
