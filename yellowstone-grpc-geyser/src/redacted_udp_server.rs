@@ -455,9 +455,7 @@ impl RedactedGeyserServer {
                 })?;
         }
 
-        loop {
-            thread::sleep(Duration::from_secs(1));
-        }
+        Ok(())
     }
 }
 
