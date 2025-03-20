@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::Builder;
 
-use crate::redacted_memory_pool::RedactedMemoryPool;
+use crate::redacted_memory_pool::{RedactedMemoryPool, set_thread_exclusivity};
 use crate::redacted_tcp_types::{
     RedactedGeyserError, REDACTED_GEYSER_MAGIC_GUARD_END, REDACTED_GEYSER_MAGIC_GUARD_START, REDACTED_GEYSER_MAX_CLIENTS, REDACTED_GEYSER_MEMORY_POOL_SIZE, REDACTED_GEYSER_NOTIFY_ACCOUNT_UPDATE, REDACTED_GEYSER_PACKET_HEADER_SIZE, REDACTED_GEYSER_PACKET_MAX_SIZE, REDACTED_GEYSER_SERVER_BACKPRESSURE, REDACTED_GEYSER_SERVER_WORK_ORDERS, REDACTED_GEYSER_SET_PROGRAM_CONFIG
 };
@@ -165,6 +165,9 @@ impl RedactedGeyserServer {
     }
 
     fn thread_send(self: &Arc<Self>, client_index: usize) {
+        #[cfg(target_os = "linux")]
+        set_thread_exclusivity();
+
         'outer: loop {
             let client = self.listener_clients[client_index];
             if client == 0 {
