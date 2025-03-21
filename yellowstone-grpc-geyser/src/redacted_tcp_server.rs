@@ -345,6 +345,19 @@ impl RedactedGeyserServer {
                     panic!("Failed to set quickack");
                 }
             }
+                                
+            #[cfg(target_os = "linux")]
+            {
+                let result = unsafe { 
+                    let bbr = b"bbr\0".as_ptr() as *const libc::c_char;
+                    libc::setsockopt(fd, libc::IPPROTO_TCP, libc::TCP_CONGESTION, bbr as *const libc::c_void, 4)
+                };
+
+                if result != 0 {
+                    panic!("Failed to set congestion control algorithm");
+                }
+            }
+
             for stream in listener.incoming() {
                 match stream {
                     Ok(stream) => {
