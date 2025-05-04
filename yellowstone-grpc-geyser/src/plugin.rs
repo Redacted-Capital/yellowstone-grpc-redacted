@@ -1,8 +1,8 @@
 use {
     crate::{
         config::Config,
-        grpc::{GrpcService, Message},
-        metrics::{self, PrometheusService, MESSAGE_QUEUE_SIZE},
+        grpc::GrpcService,
+        metrics::{self, PrometheusService},
         redacted_tcp_server::RedactedGeyserServer,
     },
     agave_geyser_plugin_interface::geyser_plugin_interface::{
@@ -177,14 +177,7 @@ impl GeyserPlugin for Plugin {
                                 )
                             }
                         }
-                    } else {
-                        let message = Message::Account((account, slot, is_startup).into());
-                        inner.send_message(message);
                     }
-                } else {
-                    let message =
-                        Message::Account(MessageAccount::from_geyser(account, slot, is_startup));
-                    inner.send_message(message);
                 }
             } else {
                 let message =
