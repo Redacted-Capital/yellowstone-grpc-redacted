@@ -38,7 +38,6 @@ pub struct PluginInner {
     prometheus: PrometheusService,
 
     tcp_server: Option<Arc<crate::redacted_tcp_server::RedactedGeyserServer>>,
-    udp_server: Option<Arc<crate::redacted_udp_server::RedactedGeyserServer>>,
 }
 
 impl PluginInner {
@@ -125,20 +124,6 @@ impl GeyserPlugin for Plugin {
             None
         };
 
-        let udp_server = if let Some(udp) = config.udp {
-            if let Some(_) = &tcp_server {
-                panic!("UDP server is enabled, but TCP server is already enabled. Disabling UDP server.");
-            } else {
-                let udp_server =
-                    crate::redacted_udp_server::RedactedGeyserServer::new(&udp.address);
-                let _ = udp_server.start_server();
-
-                Some(udp_server)
-            }
-        } else {
-            None
-        };
-
         self.inner = Some(PluginInner {
             runtime,
             snapshot_channel: Mutex::new(snapshot_channel),
@@ -148,7 +133,6 @@ impl GeyserPlugin for Plugin {
             prometheus,
 
             tcp_server,
-            udp_server,
         });
 
         Ok(())
@@ -197,6 +181,10 @@ impl GeyserPlugin for Plugin {
                         let message = Message::Account((account, slot, is_startup).into());
                         inner.send_message(message);
                     }
+                } else {
+                    let message =
+                        Message::Account(MessageAccount::from_geyser(account, slot, is_startup));
+                    inner.send_message(message);
                 }
             } else {
                 let message =
