@@ -3,14 +3,12 @@ use {
         config::Config,
         grpc::GrpcService,
         metrics::{self, PrometheusService},
-        redacted_tcp_server::RedactedGeyserServer,
     },
     agave_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, ReplicaBlockInfoVersions,
         ReplicaEntryInfoVersions, ReplicaTransactionInfoVersions, Result as PluginResult,
         SlotStatus,
     },
-    solana_sdk::pubkey::Pubkey,
     std::{
         concat, env,
         sync::{
@@ -164,25 +162,42 @@ impl GeyserPlugin for Plugin {
                 ReplicaAccountInfoVersions::V0_0_3(info) => info,
             };
 
-            if is_startup {
-                if let Some(channel) = inner.snapshot_channel.lock().unwrap().as_ref() {
-                    let message =
-                        Message::Account(MessageAccount::from_geyser(account, slot, is_startup));
-                    match channel.send(Box::new(message)) {
-                        Ok(()) => metrics::message_queue_size_inc(),
-                        Err(_) => {
-                            if !inner.snapshot_channel_closed.swap(true, Ordering::Relaxed) {
-                                log::error!(
-                                    "failed to send message to startup queue: channel closed"
-                                )
+            if let Some(tcp) = &inner.tcp_server {
+                let owner_pubkey = solana_sdk::pubkey::Pubkey::try_from(account.owner).unwrap();
+                let _ = tcp.send_account_update(
+                    account.pubkey,
+                    account.txn.map(|txn| txn.signature()),
+                    slot,
+                    false,
+                    account.lamports,
+                    &account.data,
+                    &owner_pubkey,
+                    account.executable,
+                    account.rent_epoch,
+                    account.write_version,
+                );
+            } else {
+                if is_startup {
+                    if let Some(channel) = inner.snapshot_channel.lock().unwrap().as_ref() {
+                        let message = Message::Account(MessageAccount::from_geyser(
+                            account, slot, is_startup,
+                        ));
+                        match channel.send(Box::new(message)) {
+                            Ok(()) => metrics::message_queue_size_inc(),
+                            Err(_) => {
+                                if !inner.snapshot_channel_closed.swap(true, Ordering::Relaxed) {
+                                    log::error!(
+                                        "failed to send message to startup queue: channel closed"
+                                    )
+                                }
                             }
                         }
                     }
+                } else {
+                    let message =
+                        Message::Account(MessageAccount::from_geyser(account, slot, is_startup));
+                    inner.send_message(message);
                 }
-            } else {
-                let message =
-                    Message::Account(MessageAccount::from_geyser(account, slot, is_startup));
-                inner.send_message(message);
             }
 
             Ok(())
