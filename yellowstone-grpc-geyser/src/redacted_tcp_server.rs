@@ -220,6 +220,7 @@ impl RedactedGeyserServer {
         executable: bool,
         rent_epoch: u64,
         write_version: u64,
+        include_timestamp: bool,
     ) -> Result<(), Error> {
         if self.listener_client_count.load(Ordering::SeqCst) == 0 {
             return Ok(());
@@ -247,10 +248,17 @@ impl RedactedGeyserServer {
         // - 8 bytes for rent_epoch
         // - 8 bytes for write_version
         // - 1 byte for is_sandwich
+        // - 1 byte for include_timestamp
+        // - 8 bytes for timestamp seconds
+        // - 4 bytes for timestamp nanoseconds
         // - 1 byte for the magic header end
         let mut total_size = 1 + 1 + 4 + 32 + 1 + 8 + 8 + 8 + data.len() + 32 + 1 + 8 + 8 + 1 + 1;
         if signature.is_some() {
             total_size += 64;
+        }
+
+        if include_timestamp {
+            total_size += 1 + 8 + 4;
         }
 
         let request_mem = self.memory_pool.alloc(total_size);
@@ -295,6 +303,27 @@ impl RedactedGeyserServer {
         offset += 8;
 
         request_mem[offset] = is_sandwich as u8;
+        offset += 1;
+
+        if include_timestamp {
+            let timespec = unsafe {
+                let mut ts = std::mem::MaybeUninit::<libc::timespec>::uninit();
+                libc::clock_gettime(libc::CLOCK_MONOTONIC, ts.as_mut_ptr());
+                ts.assume_init()
+            };
+
+            request_mem[offset] = 1; /* Set 1 to indicate present */
+            offset += 1;
+            
+            request_mem[offset..offset + 8].copy_from_slice(&timespec.tv_sec.to_le_bytes());
+            offset += 8;
+            
+            request_mem[offset..offset + 4].copy_from_slice(&(timespec.tv_nsec as i32).to_le_bytes());
+        }
+        else {
+            /* Set 0 to indicate not present */
+            request_mem[offset] = 0;
+        }
 
         self.send_request(request_mem)?;
 

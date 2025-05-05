@@ -175,6 +175,7 @@ impl GeyserPlugin for Plugin {
                     account.executable,
                     account.rent_epoch,
                     account.write_version,
+                    true,
                 );
             } else {
                 if is_startup {
