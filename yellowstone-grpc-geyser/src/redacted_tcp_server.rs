@@ -318,7 +318,8 @@ impl RedactedGeyserServer {
             request_mem[offset..offset + 8].copy_from_slice(&timespec.tv_sec.to_le_bytes());
             offset += 8;
             
-            request_mem[offset..offset + 4].copy_from_slice(&(timespec.tv_nsec as i32).to_le_bytes());
+            let nanos = (timespec.tv_nsec % 1_000_000_000) as i32;
+            request_mem[offset..offset + 4].copy_from_slice(&nanos.to_le_bytes());
         }
         else {
             /* Set 0 to indicate not present */
