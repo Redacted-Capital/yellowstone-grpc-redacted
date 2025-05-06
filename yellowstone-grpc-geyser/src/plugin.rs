@@ -119,7 +119,7 @@ impl GeyserPlugin for Plugin {
             let tcp_server = crate::redacted_tcp_server::RedactedGeyserServer::new(&tcp.address);
             let _ = tcp_server.start_server();
 
-            disable_geyser_grpc = tcp.disable_grpc;
+            disable_geyser_grpc = tcp.disable_grpc.unwrap_or_default();
 
             Some(tcp_server)
         } else {

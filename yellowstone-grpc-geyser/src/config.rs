@@ -358,5 +358,5 @@ pub struct ConfigTcp {
     pub address: String,
 
     /// Disable regular geyser grpc
-    pub disable_grpc: bool,
+    pub disable_grpc: Option<bool>,
 }
