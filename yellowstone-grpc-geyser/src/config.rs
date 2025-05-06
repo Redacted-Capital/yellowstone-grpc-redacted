@@ -356,4 +356,7 @@ where
 pub struct ConfigTcp {
     /// Address of tcp service.
     pub address: String,
+
+    /// Disable regular geyser grpc
+    pub disable_grpc: bool,
 }

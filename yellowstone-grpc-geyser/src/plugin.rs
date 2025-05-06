@@ -36,6 +36,7 @@ pub struct PluginInner {
     prometheus: PrometheusService,
 
     tcp_server: Option<Arc<crate::redacted_tcp_server::RedactedGeyserServer>>,
+    disable_geyser_grpc: bool,
 }
 
 impl PluginInner {
@@ -113,9 +114,12 @@ impl GeyserPlugin for Plugin {
                 ))
             })?;
 
+        let mut disable_geyser_grpc = false;
         let tcp_server = if let Some(tcp) = config.tcp {
             let tcp_server = crate::redacted_tcp_server::RedactedGeyserServer::new(&tcp.address);
             let _ = tcp_server.start_server();
+
+            disable_geyser_grpc = tcp.disable_grpc;
 
             Some(tcp_server)
         } else {
@@ -131,6 +135,7 @@ impl GeyserPlugin for Plugin {
             prometheus,
 
             tcp_server,
+            disable_geyser_grpc,
         });
 
         Ok(())
@@ -177,28 +182,31 @@ impl GeyserPlugin for Plugin {
                     account.write_version,
                     true,
                 );
-            } else {
-                if is_startup {
-                    if let Some(channel) = inner.snapshot_channel.lock().unwrap().as_ref() {
-                        let message = Message::Account(MessageAccount::from_geyser(
-                            account, slot, is_startup,
-                        ));
-                        match channel.send(Box::new(message)) {
-                            Ok(()) => metrics::message_queue_size_inc(),
-                            Err(_) => {
-                                if !inner.snapshot_channel_closed.swap(true, Ordering::Relaxed) {
-                                    log::error!(
-                                        "failed to send message to startup queue: channel closed"
-                                    )
-                                }
+            }
+
+            if inner.disable_geyser_grpc {
+                return Ok(());
+            }
+
+            if is_startup {
+                if let Some(channel) = inner.snapshot_channel.lock().unwrap().as_ref() {
+                    let message =
+                        Message::Account(MessageAccount::from_geyser(account, slot, is_startup));
+                    match channel.send(Box::new(message)) {
+                        Ok(()) => metrics::message_queue_size_inc(),
+                        Err(_) => {
+                            if !inner.snapshot_channel_closed.swap(true, Ordering::Relaxed) {
+                                log::error!(
+                                    "failed to send message to startup queue: channel closed"
+                                )
                             }
                         }
                     }
-                } else {
-                    let message =
-                        Message::Account(MessageAccount::from_geyser(account, slot, is_startup));
-                    inner.send_message(message);
                 }
+            } else {
+                let message =
+                    Message::Account(MessageAccount::from_geyser(account, slot, is_startup));
+                inner.send_message(message);
             }
 
             Ok(())
