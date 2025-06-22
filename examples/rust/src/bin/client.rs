@@ -6,7 +6,9 @@ use {
     indicatif::{MultiProgress, ProgressBar, ProgressStyle},
     log::{error, info},
     serde_json::{json, Value},
-    solana_sdk::{hash::Hash, pubkey::Pubkey, signature::Signature},
+    solana_hash::Hash,
+    solana_pubkey::Pubkey,
+    solana_signature::Signature,
     solana_transaction_status::UiTransactionEncoding,
     std::{
         collections::HashMap,
@@ -194,6 +196,7 @@ enum Action {
     HealthCheck,
     HealthWatch,
     Subscribe(Box<ActionSubscribe>),
+    SubscribeReplayInfo,
     Ping {
         #[clap(long, short, default_value_t = 0)]
         count: i32,
@@ -604,6 +607,11 @@ async fn main() -> anyhow::Result<()> {
 
                     geyser_subscribe(client, request, resub, stats, verify_encoding).await
                 }
+                Action::SubscribeReplayInfo => client
+                    .subscribe_replay_info()
+                    .await
+                    .map_err(anyhow::Error::new)
+                    .map(|response| info!("response: {response:?}")),
                 Action::Ping { count } => client
                     .ping(*count)
                     .await
