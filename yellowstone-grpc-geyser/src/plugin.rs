@@ -168,10 +168,12 @@ impl GeyserPlugin for Plugin {
             };
 
             if let Some(tcp) = &inner.tcp_server {
-                let owner_pubkey = solana_sdk::pubkey::Pubkey::try_from(account.owner).unwrap();
+                let owner_pubkey = solana_pubkey::Pubkey::try_from(account.owner).unwrap();
                 let _ = tcp.send_account_update(
                     account.pubkey,
-                    account.txn.map(|txn| txn.signature()),
+                    account
+                        .txn
+                        .map(|txn| txn.signature().as_ref().try_into().unwrap()),
                     slot,
                     false,
                     account.lamports,

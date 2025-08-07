@@ -1,7 +1,6 @@
 use crossbeam_channel::{Receiver, Sender};
 use libc::{send, MSG_NOSIGNAL};
-use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::Signature;
+use solana_pubkey::Pubkey;
 use std::collections::HashSet;
 use std::io::{Error, Read};
 use std::net::{TcpListener, TcpStream};
@@ -211,7 +210,7 @@ impl RedactedGeyserServer {
     pub fn send_account_update(
         self: &Arc<Self>,
         pubkey: &[u8],
-        signature: Option<&Signature>,
+        signature: Option<&[u8; 64]>,
         slot: u64,
         is_sandwich: bool,
         lamports: u64,

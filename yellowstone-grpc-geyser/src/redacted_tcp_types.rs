@@ -1,4 +1,4 @@
-use solana_sdk::{pubkey::Pubkey, signature::Signature};
+use solana_pubkey::Pubkey;
 
 /* 10MB */
 pub const REDACTED_GEYSER_PACKET_MAX_SIZE: u32 = 10 * 1024 * 1024;
@@ -36,17 +36,4 @@ pub enum RedactedGeyserError {
 #[derive(Clone)]
 pub struct RedactedGeyserRequestProgramConfig {
     pub program_list: Vec<Pubkey>,
-}
-
-pub struct RedactedGeyserAccountUpdate {
-    pub pubkey: Pubkey,
-    pub signature: Option<Signature>,
-    pub slot: u64,
-    pub lamports: u64,
-    pub data: Vec<u8>,
-    pub owner: Pubkey,
-    pub executable: bool,
-    pub rent_epoch: u64,
-    pub write_version: u64,
-    pub is_sandwich: bool,
 }
