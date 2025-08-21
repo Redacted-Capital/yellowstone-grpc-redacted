@@ -953,7 +953,6 @@ impl GrpcService {
                                 info!("client #{id}: filter updated");
 
                                 let commitment = filter.get_commitment_level();
-                                log::info!("client #{id}: commitment level updated to {:?}", commitment);
 
                                 if let Some(from_slot) = from_slot {
                                     let Some(replay_stored_slots_tx) = &replay_stored_slots_tx else {
@@ -1034,7 +1033,6 @@ impl GrpcService {
                                 break 'outer;
                             }
                         };
-                        log::info!("client #{id}: commitment level is {:?}", commitment);
 
                         if commitment == filter.get_commitment_level() {
                             for (_msgid, message) in messages.iter() {
