@@ -952,6 +952,9 @@ impl GrpcService {
                                 DebugClientMessage::maybe_send(&debug_client_tx, || DebugClientMessage::UpdateFilter { id, filter: Box::new(filter.clone()) });
                                 info!("client #{id}: filter updated");
 
+                                let commitment = filter.get_commitment_level();
+                                log::info!("client #{id}: commitment level updated to {:?}", commitment);
+
                                 if let Some(from_slot) = from_slot {
                                     let Some(replay_stored_slots_tx) = &replay_stored_slots_tx else {
                                         info!("client #{id}: from_slot is not supported");
@@ -962,7 +965,6 @@ impl GrpcService {
                                     };
 
                                     let (tx, rx) = oneshot::channel();
-                                    let commitment = filter.get_commitment_level();
                                     if let Err(_error) = replay_stored_slots_tx.send((commitment, from_slot, tx)).await {
                                         error!("client #{id}: failed to send from_slot request");
                                         tokio::spawn(async move {
@@ -1032,6 +1034,7 @@ impl GrpcService {
                                 break 'outer;
                             }
                         };
+                        log::info!("client #{id}: commitment level is {:?}", commitment);
 
                         if commitment == filter.get_commitment_level() {
                             for (_msgid, message) in messages.iter() {
