@@ -171,7 +171,7 @@ impl Filter {
         if commitment > 0 {
             commitment -= 1;
 
-            log::info!(
+            println!(
                 "Commitment level is lowered from {} to {}.",
                 commitment + 1,
                 commitment
