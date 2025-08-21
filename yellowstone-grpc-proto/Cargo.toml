@@ -41,6 +41,7 @@ smallvec = { workspace = true, optional = true }
 spl-token-2022 = { workspace = true, optional = true }
 thiserror = { workspace = true, optional = true }
 tonic = { workspace = true, optional = true }
+log = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }

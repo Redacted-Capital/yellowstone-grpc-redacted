@@ -169,7 +169,7 @@ impl Filter {
     fn decode_commitment(commitment: Option<i32>) -> FilterResult<CommitmentLevel> {
         let mut commitment = commitment.unwrap_or(CommitmentLevelProto::Processed as i32);
 
-        println!(
+        log::info!(
             "Commitment level is lowered from {} to {}.",
             commitment + 1,
             commitment
